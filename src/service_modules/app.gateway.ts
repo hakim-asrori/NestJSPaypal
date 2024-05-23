@@ -4,7 +4,7 @@ import * as cors from 'cors';
 
 @WebSocketGateway({
     cors: {
-        origin: 'http://localhost:3000', // Ganti dengan URL Nuxt.js Anda
+        origin: process.env.PORT_FE, // Ganti dengan URL Nuxt.js Anda
         methods: ['GET', 'POST'],
         allowedHeaders: ['Content-Type', 'Authorization'],
     }
