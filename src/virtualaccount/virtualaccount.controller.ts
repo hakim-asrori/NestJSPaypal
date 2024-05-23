@@ -1,37 +1,33 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post } from "@nestjs/common";
-import { XenditService } from "./xendit.service";
 import { AppGateway } from "src/service_modules/app.gateway";
+import { VirtualAccountService } from "./virtualaccount.service";
 
-@Controller("xendit")
-export class XenditController {
+@Controller("virtualaccount")
+export class VirtualAccountController {
 
     constructor(
-        private xenditService: XenditService,
+        private virtualService: VirtualAccountService,
         private appGateway: AppGateway
     ) {}
 
-    @Post("qr-xendit")
+    @Post("create")
     async qrXendit() : Promise<any> {
-        return await this.xenditService.createQrXendit()
+        return await this.virtualService.createVirtualAccount()
     }
 
-    @Post("qr-callback")
+    @Post("callback")
     @HttpCode(HttpStatus.OK)
     async callbackQr(@Body() xenditCallbackData: any): Promise<any> {
         try {
-
-            const status = xenditCallbackData?.data?.status;
-
-            const qr_id = xenditCallbackData?.data?.qr_id;
-        
-            const updatePayment = await this.xenditService.updatePayment(
-                qr_id,
-                status
+            
+            const external_id = xenditCallbackData?.external_id;
+            
+            const updatePayment = await this.virtualService.updatePayment(
+                external_id
             )
             
             const message = "Hello Rahani"
             this.appGateway.sendMessageToClients(message)
-            // this.appGateway.sendStatusToClient(updatePayment.status)
 
             return {
                 success: true,
@@ -49,8 +45,8 @@ export class XenditController {
     @Get(":bank_code/:id/get")
     getData(
         @Param("bank_code") bank_code: string,
-        @Param("id") reference_id: string
+        @Param("id") id: string
     ) {
-        return this.xenditService.getData(bank_code, reference_id)
+        return this.virtualService.getData(bank_code, id)
     }
 }

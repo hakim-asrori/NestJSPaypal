@@ -1,7 +1,5 @@
 import { Body, Controller, Delete, Get, Header, HttpCode, Param, Post, Put, Redirect, Req, Res } from "@nestjs/common";
 import { CreateHeroDto } from "./hero/dto/create-hero.dto";
-import { CreateUserDto } from "src/user/dto/create-user.dto";
-import { UpdateUserDto } from "src/user/dto/update-user.dto";
 import { UpdateDtoHero } from "./hero/dto/update-hero.dto";
 import { HeroService } from "./hero.service";
 

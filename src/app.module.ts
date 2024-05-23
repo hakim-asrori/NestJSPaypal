@@ -3,11 +3,15 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { UserModule } from './user/user.module';
 import { join } from 'path';
 import { PaymentModule } from './payment/payment.module';
 import { XenditModule } from './xendit/xendit.module';
 import { AppGateway } from './service_modules/app.gateway';
+import { VirtualAccountModule } from './virtualaccount/virtualaccount.module';
+import { EwalletModule } from './ewallet/ewallet.module';
+import { BankModule } from './bank/bank.module';
+import { PaypalModule } from './paypal/paypal.module';
+import { CaptureListener } from './components/listener/capture.listener';
 
 @Module({
   imports: [
@@ -30,9 +34,12 @@ import { AppGateway } from './service_modules/app.gateway';
       inject: [ConfigService]
     }),
 
-    UserModule,
     PaymentModule,
-    XenditModule
+    XenditModule,
+    VirtualAccountModule,
+    EwalletModule,
+    BankModule,
+    PaypalModule
   ],
   controllers: [AppController],
   providers: [

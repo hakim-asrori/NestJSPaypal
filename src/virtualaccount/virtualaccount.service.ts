@@ -5,7 +5,7 @@ import axios from "axios";
 import { Xendit } from "src/components/entities/xendit.entity";
 
 @Injectable()
-export class XenditService {
+export class VirtualAccountService {
 
     constructor(@InjectRepository(Xendit) private readonly xenditRepository: Repository<Xendit>) {}
 
@@ -44,22 +44,23 @@ export class XenditService {
         return formattedIsoString;
     }
 
-    async createQrXendit() {
+    async createVirtualAccount() {
         const accessToken = this.getAccessToken();
         const externalId = this.generateRandomId(16);
-        const referenceId = this.generateRandomId(16);
         const expiresAt = this.getExpiresAt(60);
 
         try {
             const response = await axios.post(
-                'https://api.xendit.co/qr_codes',
+                'https://api.xendit.co/callback_virtual_accounts',
                 {
                     external_id: externalId,
-                    reference_id: referenceId,
-                    type: 'DYNAMIC',
-                    currency: 'IDR',
-                    amount: 10000,
-                    expires_at: expiresAt
+                    bank_code: "BRI",
+                    name: "Teguhriyadi",
+                    currency: "IDR",
+                    is_closed: true,
+                    is_single_use: true,
+                    expected_amount: 10000,
+                    expiration_date: expiresAt
                 },
                 {
                     headers: {
@@ -73,19 +74,21 @@ export class XenditService {
             const responseData = response.data
 
             const saveToTheDatabase = this.xenditRepository.create({
-                invoice_id: "TNOS-INV-123",
-                reference_id: responseData.id,
+                invoice_id: "TRX-" + responseData.external_id,
+                reference_id: "tnos-" + responseData.account_number,
+                currency: "IDR",
                 external_id: externalId,
-                amount: responseData.amount,
+                amount: responseData.expected_amount,
                 status: responseData.status,
-                payment_method: "QRIS",
-                bank_code: responseData.channel_code,
-                expires_at: responseData.expires_at,
-                currency: "IDR"
+                is_single_use: responseData.is_single_use,
+                is_closed: responseData.is_closed,
+                payment_method: "VIRTUAL ACCOUNT",
+                bank_code: responseData.bank_code,
+                expires_at: responseData.expiration_date
             })
 
             await this.xenditRepository.save(saveToTheDatabase)
-
+            
             return response.data
 
         } catch (error) {
@@ -95,18 +98,18 @@ export class XenditService {
     }
 
     async updatePayment(
-        qr_id: string,
-        status: string
+        external_id: string
     ) {
         try {
 
             const payment = await this.xenditRepository.findOne({
                 where: {
-                    reference_id: qr_id
+                    external_id: external_id
                 }
             })
 
-            payment.status = status
+            payment.status = "PAID"
+            payment.status_pembayaran = "SUCCESS"
 
             const updatePayment = await this.xenditRepository.save(payment)
 
