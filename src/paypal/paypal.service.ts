@@ -99,19 +99,31 @@ export class PaypalService {
                 }
             );
 
-            const saveToTheDatabase = this.xenditRepository.create({
+            const paymentPaypal = this.xenditRepository.create({
                 invoice_id: "TRX-" + response.data.id,
                 reference_id: "tnos-" + response.data.id,
                 currency: response.data.purchase_units[0].amount.currency_code,
                 external_id: response.data.id,
                 amount: parseInt(response.data.purchase_units[0].amount.value),
                 payment_method: "PAYPAL",
-                bank_code: "",
+                bank_code: "PAYPAL",
                 status: response.data.status,
                 expires_at: expiresAt
             });
 
-            await this.xenditRepository.save(saveToTheDatabase);
+            const responseDataPaypal = await this.xenditRepository.save(paymentPaypal);
+
+            const paymentLog = this.paymentLogRepository.create({
+                transaction_id: responseDataPaypal.id,
+                amount: paymentPaypal.amount,
+                currency: paymentPaypal.currency,
+                payment_method: paymentPaypal.payment_method,
+                bank_code: paymentPaypal.bank_code,
+                status: paymentPaypal.status,
+                description: "Create Paypal"
+            })
+
+            await this.paymentLogRepository.save(paymentLog);
 
             return response.data;
 

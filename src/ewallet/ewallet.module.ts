@@ -5,11 +5,13 @@ import { EwalletController } from "./ewallet.controller";
 import { EwalletService } from "./ewallet.service";
 import { Ewallet } from "./entities/ewallet.entity";
 import { Xendit } from "src/components/entities/xendit.entity";
+import { PaymentLog } from "src/components/entities/payment-log.entity";
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([Ewallet]),
-        TypeOrmModule.forFeature([Xendit])
+        TypeOrmModule.forFeature([Xendit]),
+        TypeOrmModule.forFeature([PaymentLog])
     ],
     controllers: [EwalletController],
     providers: [

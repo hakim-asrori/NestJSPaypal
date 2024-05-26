@@ -3,11 +3,15 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import axios from "axios";
 import { Xendit } from "src/components/entities/xendit.entity";
+import { PaymentLog } from "src/components/entities/payment-log.entity";
 
 @Injectable()
 export class VirtualAccountService {
 
-    constructor(@InjectRepository(Xendit) private readonly xenditRepository: Repository<Xendit>) {}
+    constructor(
+        @InjectRepository(Xendit) private readonly xenditRepository: Repository<Xendit>,
+        @InjectRepository(PaymentLog) private readonly paymentLogRepository: Repository<PaymentLog>
+    ) {}
 
     private getAccessToken() {
         try {
@@ -44,7 +48,8 @@ export class VirtualAccountService {
         return formattedIsoString;
     }
 
-    async createVirtualAccount() {
+    async createVirtualAccount(request: any) {
+
         const accessToken = this.getAccessToken();
         const externalId = this.generateRandomId(16);
         const expiresAt = this.getExpiresAt(60);
@@ -54,12 +59,12 @@ export class VirtualAccountService {
                 'https://api.xendit.co/callback_virtual_accounts',
                 {
                     external_id: externalId,
-                    bank_code: "BRI",
+                    bank_code: request.bank_code,
                     name: "Teguhriyadi",
                     currency: "IDR",
                     is_closed: true,
                     is_single_use: true,
-                    expected_amount: 10000,
+                    expected_amount: request.amount,
                     expiration_date: expiresAt
                 },
                 {
@@ -87,7 +92,19 @@ export class VirtualAccountService {
                 expires_at: responseData.expiration_date
             })
 
-            await this.xenditRepository.save(saveToTheDatabase)
+            const paymentData = await this.xenditRepository.save(saveToTheDatabase)
+            
+            const paymentLog = this.paymentLogRepository.create({
+                transaction_id: paymentData.id,
+                amount: saveToTheDatabase.amount,
+                currency: saveToTheDatabase.currency,
+                payment_method: saveToTheDatabase.payment_method,
+                bank_code: saveToTheDatabase.bank_code,
+                status: saveToTheDatabase.status,
+                description: "Create Virtual Accounts"
+            })
+
+            await this.paymentLogRepository.save(paymentLog)
             
             return response.data
 
@@ -112,6 +129,18 @@ export class VirtualAccountService {
             payment.status_pembayaran = "SUCCESS"
 
             const updatePayment = await this.xenditRepository.save(payment)
+
+            const paymentLog = this.paymentLogRepository.create({
+                transaction_id: updatePayment.id,
+                amount: updatePayment.amount,
+                currency: updatePayment.currency,
+                payment_method: updatePayment.payment_method,
+                bank_code: updatePayment.bank_code,
+                status: updatePayment.status,
+                description: "Callback Virtual Accounts"
+            })
+            
+            await this.paymentLogRepository.save(paymentLog)
 
             return updatePayment
         

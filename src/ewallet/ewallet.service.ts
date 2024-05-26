@@ -4,13 +4,15 @@ import { Repository } from "typeorm";
 import axios from "axios";
 import { Ewallet } from "./entities/ewallet.entity";
 import { Xendit } from "src/components/entities/xendit.entity";
+import { PaymentLog } from "src/components/entities/payment-log.entity";
 
 @Injectable()
 export class EwalletService {
 
     constructor(
         @InjectRepository(Ewallet) private readonly ewalletRepository: Repository<Ewallet>,
-        @InjectRepository(Xendit) private readonly xenditRepository: Repository<Xendit>
+        @InjectRepository(Xendit) private readonly xenditRepository: Repository<Xendit>,
+        @InjectRepository(PaymentLog) private readonly paymentLogRepository: Repository<PaymentLog>
     ) {}
 
     private getAccessToken() {
@@ -63,13 +65,15 @@ export class EwalletService {
         }
     }
 
-    async createEwallet() {
+    async createEwallet(request: any) {
         const accessToken = this.getAccessToken();
         const externalId = this.generateRandomId(16);
         const expiresAt = this.getExpiresAt(60);
     
+        const port_custom = process.env.PORT_PAYMENT_CUSTOM
+
         try {
-            const channelCode = "ID_ASTRAPAY";
+            const channelCode = request.channel_code;
     
             type ChannelProperties = {
                 success_redirect_url: string;
@@ -79,24 +83,25 @@ export class EwalletService {
     
             const channelConfigurations: Record<string, ChannelProperties> = {
                 "ID_OVO": {
-                    success_redirect_url: "https://rtqulilalbab.com/",
+                    success_redirect_url: `${port_custom}/payment/success`,
                     failure_redirect_url: "https://rtqulilalbab.com/",
-                    mobile_number: "+6281284360207"
+                    mobile_number: request.mobile_number
+                    // mobile_number: "+6281284360207"
                 },
 
                 "ID_ASTRAPAY": {
-                    success_redirect_url: "http://localhost:3000/payment/success",
+                    success_redirect_url: `${port_custom}/payment/success`,
                     failure_redirect_url: "https://rtqulilalbab.com/"
                 },
 
                 "ID_LINKAJA": {
-                    success_redirect_url: "http://localhost:3000/payment/success",
+                    success_redirect_url: `${port_custom}/payment/success`,
                     failure_redirect_url: "https://rtqulilalbab.com/"
                 }
             };
     
             const channelProperties: ChannelProperties = channelConfigurations[channelCode] || {
-                success_redirect_url: "https://rtqulilalbab.com/",
+                success_redirect_url: `${port_custom}/payment/success`,
                 failure_redirect_url: "https://rtqulilalbab.com/"
             };
     
@@ -105,7 +110,7 @@ export class EwalletService {
                 {
                     reference_id: externalId,
                     currency: "IDR",
-                    amount: 10000,
+                    amount: request.amount,
                     checkout_method: "ONE_TIME_PAYMENT",
                     channel_code: channelCode,
                     channel_properties: channelProperties,
@@ -125,7 +130,7 @@ export class EwalletService {
     
             const responseData = response.data;
     
-            const saveToTheDatabase = this.xenditRepository.create({
+            const paymentData = this.xenditRepository.create({
                 invoice_id: "TRX-" + responseData.reference_id,
                 reference_id: "tnos-" + responseData.reference_id,
                 currency: "IDR",
@@ -137,7 +142,19 @@ export class EwalletService {
                 expires_at: expiresAt
             });
     
-            await this.xenditRepository.save(saveToTheDatabase);
+            const responseDataEwallet = await this.xenditRepository.save(paymentData);
+
+            const paymentLog = this.paymentLogRepository.create({
+                transaction_id: responseDataEwallet.id,
+                amount: paymentData.amount,
+                currency: paymentData.currency,
+                payment_method: paymentData.payment_method,
+                bank_code: paymentData.bank_code,
+                status: paymentData.status,
+                description: "Create Ewallet"
+            })
+
+            await this.paymentLogRepository.save(paymentLog);
             
             return response.data;
         } catch (error) {
@@ -162,6 +179,18 @@ export class EwalletService {
             payment.status_pembayaran = "SUCCESS"
 
             const updatePayment = await this.xenditRepository.save(payment)
+
+            const paymentLog = this.paymentLogRepository.create({
+                transaction_id: updatePayment.id,
+                amount: updatePayment.amount,
+                currency: updatePayment.currency,
+                payment_method: updatePayment.payment_method,
+                bank_code: updatePayment.bank_code,
+                status: updatePayment.status,
+                description: "Callback Ewallet"
+            })
+
+            await this.paymentLogRepository.save(paymentLog)
 
             return updatePayment
 

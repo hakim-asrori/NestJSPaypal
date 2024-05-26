@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post } from "@nestjs/common";
 import { XenditService } from "./xendit.service";
 import { AppGateway } from "src/service_modules/app.gateway";
+import { CreateXenditDto } from "src/components/dto/create-qr.dto";
 
 @Controller("xendit")
 export class XenditController {
@@ -11,8 +12,8 @@ export class XenditController {
     ) {}
 
     @Post("qr-xendit")
-    async qrXendit() : Promise<any> {
-        return await this.xenditService.createQrXendit()
+    async qrXendit(@Body() createQR: CreateXenditDto) : Promise<any> {
+        return await this.xenditService.createQrXendit(createQR)
     }
 
     @Post("qr-callback")
@@ -29,9 +30,8 @@ export class XenditController {
                 status
             )
             
-            const message = "Hello Rahani"
+            const message = "Success"
             this.appGateway.sendMessageToClients(message)
-            // this.appGateway.sendStatusToClient(updatePayment.status)
 
             return {
                 success: true,

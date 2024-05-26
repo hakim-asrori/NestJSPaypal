@@ -4,9 +4,10 @@ import * as cors from 'cors';
 
 @WebSocketGateway({
     cors: {
-        origin: process.env.PORT_FE, // Ganti dengan URL Nuxt.js Anda
+        origin: process.env.PORT_PAYMENT_CUSTOM || 'http://localhost:3000',
         methods: ['GET', 'POST'],
         allowedHeaders: ['Content-Type', 'Authorization'],
+        credentials: true
     }
 })
 
@@ -15,15 +16,15 @@ export class AppGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
     @WebSocketServer() server: Server;
 
     afterInit(server: Server) {
-        console.log('WebSocket Initialized');
+        // console.log('WebSocket Initialized');
     }
 
     handleConnection(client: Socket) {
-        console.log(`Client connected: ${client.id}`);
+        // console.log(`Client connected: ${client.id}`);
     }
 
     handleDisconnect(client: Socket) {
-        console.log(`Client disconnected: ${client.id}`);
+        // console.log(`Client disconnected: ${client.id}`);
     }
 
     sendMessageToClients(message: string) {

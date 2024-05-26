@@ -3,11 +3,15 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import axios from "axios";
 import { Xendit } from "src/components/entities/xendit.entity";
+import { PaymentLog } from "src/components/entities/payment-log.entity";
 
 @Injectable()
 export class XenditService {
 
-    constructor(@InjectRepository(Xendit) private readonly xenditRepository: Repository<Xendit>) {}
+    constructor(
+        @InjectRepository(Xendit) private readonly xenditRepository: Repository<Xendit>,
+        @InjectRepository(PaymentLog) private readonly paymentLogRepository: Repository<PaymentLog>
+    ) {}
 
     private getAccessToken() {
         try {
@@ -44,11 +48,13 @@ export class XenditService {
         return formattedIsoString;
     }
 
-    async createQrXendit() {
+    async createQrXendit(request: any) {
         const accessToken = this.getAccessToken();
         const externalId = this.generateRandomId(16);
         const referenceId = this.generateRandomId(16);
-        const expiresAt = this.getExpiresAt(60);
+
+        const currentTime = new Date();
+        const expiresAt = new Date(currentTime.getTime() + (60 * 60 * 1000));
 
         try {
             const response = await axios.post(
@@ -58,8 +64,8 @@ export class XenditService {
                     reference_id: referenceId,
                     type: 'DYNAMIC',
                     currency: 'IDR',
-                    amount: 10000,
-                    expires_at: expiresAt
+                    amount: request.amount,
+                    expires_at: expiresAt.toISOString()
                 },
                 {
                     headers: {
@@ -72,7 +78,7 @@ export class XenditService {
 
             const responseData = response.data
 
-            const saveToTheDatabase = this.xenditRepository.create({
+            const paymentQris = this.xenditRepository.create({
                 invoice_id: "TNOS-INV-123",
                 reference_id: responseData.id,
                 external_id: externalId,
@@ -84,7 +90,19 @@ export class XenditService {
                 currency: "IDR"
             })
 
-            await this.xenditRepository.save(saveToTheDatabase)
+            const responseDataQris = await this.xenditRepository.save(paymentQris)
+
+            const paymentLog = this.paymentLogRepository.create({
+                transaction_id: responseDataQris.id,
+                amount: paymentQris.amount,
+                currency: paymentQris.currency,
+                payment_method: paymentQris.payment_method,
+                bank_code: paymentQris.bank_code,
+                status: paymentQris.status,
+                description: "Create QRIS"
+            })
+
+            await this.paymentLogRepository.save(paymentLog);
 
             return response.data
 
@@ -109,6 +127,18 @@ export class XenditService {
             payment.status = status
 
             const updatePayment = await this.xenditRepository.save(payment)
+
+            const paymentLog = this.paymentLogRepository.create({
+                transaction_id: updatePayment.id,
+                amount: updatePayment.amount,
+                currency: updatePayment.currency,
+                payment_method: updatePayment.payment_method,
+                bank_code: updatePayment.bank_code,
+                status: updatePayment.status,
+                description: "Callback QRIS"
+            })
+
+            await this.paymentLogRepository.save(paymentLog);
 
             return updatePayment
         

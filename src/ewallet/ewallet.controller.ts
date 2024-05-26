@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post } from "@nestjs/common";
 import { AppGateway } from "src/service_modules/app.gateway";
 import { EwalletService } from "./ewallet.service";
+import { CreateEwalletDto } from "src/components/dto/create-ewallet.dto";
 
 @Controller("ewallet")
 export class EwalletController {
@@ -16,8 +17,8 @@ export class EwalletController {
     }
 
     @Post("create")
-    async qrXendit() : Promise<any> {
-        return await this.ewalletService.createEwallet()
+    async qrXendit(@Body() createEwallet: CreateEwalletDto) : Promise<any> {
+        return await this.ewalletService.createEwallet(createEwallet)
     }
 
     @Post("callback")
@@ -32,6 +33,9 @@ export class EwalletController {
                 external_id,
                 status
             )
+
+            const message = "Success"
+            this.appGateway.sendMessageToClients(message)
 
             return {
                 success: true,

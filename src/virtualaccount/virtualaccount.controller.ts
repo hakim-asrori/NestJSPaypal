@@ -1,6 +1,7 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Req } from "@nestjs/common";
 import { AppGateway } from "src/service_modules/app.gateway";
 import { VirtualAccountService } from "./virtualaccount.service";
+import { CreateVADto } from "src/components/dto/create-va.dto";
 
 @Controller("virtualaccount")
 export class VirtualAccountController {
@@ -11,8 +12,8 @@ export class VirtualAccountController {
     ) {}
 
     @Post("create")
-    async qrXendit() : Promise<any> {
-        return await this.virtualService.createVirtualAccount()
+    async createVa(@Body() createVa: CreateVADto) : Promise<any> {
+        return await this.virtualService.createVirtualAccount(createVa)
     }
 
     @Post("callback")
@@ -26,7 +27,7 @@ export class VirtualAccountController {
                 external_id
             )
             
-            const message = "Hello Rahani"
+            const message = "Success"
             this.appGateway.sendMessageToClients(message)
 
             return {

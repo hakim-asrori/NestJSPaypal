@@ -9,8 +9,8 @@ export class PaymentLog {
     @PrimaryGeneratedColumn()
     id: number
 
-    @Column({length: 150})
-    paypal_id: string
+    @Column()
+    transaction_id: number
 
     @Column()
     amount: number
@@ -20,6 +20,9 @@ export class PaymentLog {
 
     @Column({length: 40})
     payment_method: String
+
+    @Column({length: 40})
+    bank_code: String
 
     @Column({length: 255})
     status: string
