@@ -30,7 +30,7 @@ export class PaypalService {
 
         try {
             const response = await axios.post(
-                'https://api-m.sandbox.paypal.com/v1/oauth2/token',
+                `${process.env.PORT_PAYPAL}/v1/oauth2/token`,
                 params,
                 {
                     headers: {
@@ -50,43 +50,45 @@ export class PaypalService {
         }
     }
 
-    async createPaypal() {
+    async createPaypal(request: any) {
         const accessToken = await this.getAccessToken();
         const externalId = this.generateRandomId(16);
         const expiresAt = this.getExpiresAt(60);
 
+        const port_custom = process.env.PORT_PAYMENT_CUSTOM
+        
         try {
             const response = await axios.post(
-                'https://api-m.sandbox.paypal.com/v2/checkout/orders',
+                `${process.env.PORT_PAYPAL}/v2/checkout/orders`,
                 {
                     intent: "CAPTURE",
                     purchase_units: [
                         {
                             items: [
                                 {
-                                    name: "T-Shirt",
-                                    description: "Green XL",
+                                    name: request.items,
+                                    description: request.description ? request.description : null,
                                     quantity: "1",
                                     unit_amount: {
                                         currency_code: "USD",
-                                        value: "100.00" // Sesuaikan dengan konversi ke IDR
+                                        value: `${request.amount}` // Sesuaikan dengan konversi ke IDR
                                     }
                                 }
                             ],
                             amount: {
                                 currency_code: "USD",
-                                value: "100.00", // Sesuaikan dengan konversi ke IDR
+                                value: `${request.amount}`, // Sesuaikan dengan konversi ke IDR
                                 breakdown: {
                                     item_total: {
                                         currency_code: "USD",
-                                        value: "100.00" // Sesuaikan dengan konversi ke IDR
+                                        value: `${request.amount}`// Sesuaikan dengan konversi ke IDR
                                     }
                                 }
                             }
                         }
                     ],
                     application_context: {
-                        return_url: "https://example.com/return",
+                        return_url: `${port_custom}/payment/success`,
                         cancel_url: "https://example.com/cancel"
                     }
                 },
@@ -99,16 +101,24 @@ export class PaypalService {
                 }
             );
 
+            const responseData = response.data
+
             const paymentPaypal = this.xenditRepository.create({
-                invoice_id: "TRX-" + response.data.id,
-                reference_id: "tnos-" + response.data.id,
-                currency: response.data.purchase_units[0].amount.currency_code,
-                external_id: response.data.id,
-                amount: parseInt(response.data.purchase_units[0].amount.value),
+
+                xendit_id: responseData.id,
+                reference_id: responseData.purchase_units.reference_id,
+                amount: parseInt(responseData.purchase_units[0].amount.value),
+                status: responseData.status,
+                description: "-",
+                customer: JSON.stringify({
+                    name: request.name,
+                    email: request.email,
+                    phone: request.phone
+                }),
+                items: JSON.stringify(responseData.purchase_units[0].items[0]),
+                actions: "-",
                 payment_method: "PAYPAL",
-                bank_code: "PAYPAL",
-                status: response.data.status,
-                expires_at: expiresAt
+                others: "-"
             });
 
             const responseDataPaypal = await this.xenditRepository.save(paymentPaypal);
@@ -116,9 +126,8 @@ export class PaypalService {
             const paymentLog = this.paymentLogRepository.create({
                 transaction_id: responseDataPaypal.id,
                 amount: paymentPaypal.amount,
-                currency: paymentPaypal.currency,
+                currency: "USD",
                 payment_method: paymentPaypal.payment_method,
-                bank_code: paymentPaypal.bank_code,
                 status: paymentPaypal.status,
                 description: "Create Paypal"
             })
@@ -141,12 +150,11 @@ export class PaypalService {
         try {
             const payment = await this.xenditRepository.findOne({
                 where: {
-                    external_id: paypalId
+                    xendit_id: paypalId
                 }
             })
 
             payment.status = status;
-            payment.status_pembayaran = "SUCCESS";
 
             const updatePayment = await this.xenditRepository.save(payment);
 
@@ -168,12 +176,37 @@ export class PaypalService {
         this.processedCallbacks.add(paypalId);
     }
 
+    // Sandbox
+    // async captureOrder(paypalId: string): Promise<any> {
+    //     const accessToken = await this.getAccessToken();
+
+    //     try {
+    //         const response = await axios.post(
+    //             `https://api-m.sandbox.paypal.com/v2/checkout/orders/${paypalId}/capture`,
+    //             {},
+    //             {
+    //                 headers: {
+    //                     'Authorization': `Bearer ${accessToken}`,
+    //                     'Content-Type': 'application/json'
+    //                 }
+    //             }
+    //         );
+
+    //         console.log('Capture response:', response.data);
+    //         return response.data;
+    //     } catch (error) {
+    //         console.log('Error capturing order:', error);
+    //         throw error;
+    //     }
+    // }
+
+    // Production
     async captureOrder(paypalId: string): Promise<any> {
         const accessToken = await this.getAccessToken();
 
         try {
             const response = await axios.post(
-                `https://api-m.sandbox.paypal.com/v2/checkout/orders/${paypalId}/capture`,
+                `${process.env.PORT_PAYPAL}/v2/checkout/orders/${paypalId}/capture`,
                 {},
                 {
                     headers: {
@@ -201,12 +234,11 @@ export class PaypalService {
 
             // Update payment status to captured in your database
             const payment = await this.xenditRepository.findOne({
-                where: { external_id: paypalId }
+                where: { xendit_id: paypalId }
             });
 
             if (payment) {
                 payment.status = 'COMPLETED';
-                payment.status_pembayaran = 'SUCCESS';
                 await this.xenditRepository.save(payment);
 
                 console.log('Payment successfully captured:', payment);

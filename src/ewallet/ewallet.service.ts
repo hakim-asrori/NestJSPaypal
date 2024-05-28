@@ -72,6 +72,8 @@ export class EwalletService {
     
         const port_custom = process.env.PORT_PAYMENT_CUSTOM
 
+        const currentTime = Date.now();
+
         try {
             const channelCode = request.channel_code;
     
@@ -108,7 +110,7 @@ export class EwalletService {
             const response = await axios.post(
                 'https://api.xendit.co/ewallets/charges',
                 {
-                    reference_id: externalId,
+                    reference_id: request.id + "-" + currentTime,
                     currency: "IDR",
                     amount: request.amount,
                     checkout_method: "ONE_TIME_PAYMENT",
@@ -131,15 +133,22 @@ export class EwalletService {
             const responseData = response.data;
     
             const paymentData = this.xenditRepository.create({
-                invoice_id: "TRX-" + responseData.reference_id,
-                reference_id: "tnos-" + responseData.reference_id,
-                currency: "IDR",
-                external_id: responseData.reference_id,
-                amount: responseData.charge_amount,
+                xendit_id: responseData.id,
+                business_id: responseData.business_id,
+                reference_id: responseData.reference_id,
+                amount: request.amount,
                 status: responseData.status,
-                payment_method: "EWALLET",
-                bank_code: responseData.channel_code,
-                expires_at: expiresAt
+                description: request.description ? request.description : "-",
+                customer: JSON.stringify({
+                    name: request.name,
+                    email: request.email,
+                    phone: request.phone
+                }),
+                items: request.items,
+                actions: responseData.actions ? JSON.stringify(responseData.actions) : null,
+                payment_method: responseData.checkout_method,
+                payment_channel: responseData.channel_code,
+                others: null
             });
     
             const responseDataEwallet = await this.xenditRepository.save(paymentData);
@@ -147,7 +156,7 @@ export class EwalletService {
             const paymentLog = this.paymentLogRepository.create({
                 transaction_id: responseDataEwallet.id,
                 amount: paymentData.amount,
-                currency: paymentData.currency,
+                currency: "IDR",
                 payment_method: paymentData.payment_method,
                 bank_code: paymentData.bank_code,
                 status: paymentData.status,
@@ -171,19 +180,18 @@ export class EwalletService {
 
             const payment = await this.xenditRepository.findOne({
                 where: {
-                    external_id: external_id
+                    reference_id: external_id
                 }
             })
 
             payment.status = status
-            payment.status_pembayaran = "SUCCESS"
 
             const updatePayment = await this.xenditRepository.save(payment)
 
             const paymentLog = this.paymentLogRepository.create({
                 transaction_id: updatePayment.id,
                 amount: updatePayment.amount,
-                currency: updatePayment.currency,
+                currency: "IDR",
                 payment_method: updatePayment.payment_method,
                 bank_code: updatePayment.bank_code,
                 status: updatePayment.status,

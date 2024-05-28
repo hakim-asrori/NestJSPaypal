@@ -54,13 +54,15 @@ export class VirtualAccountService {
         const externalId = this.generateRandomId(16);
         const expiresAt = this.getExpiresAt(60);
 
+        const currentTime = Date.now();
+
         try {
             const response = await axios.post(
                 'https://api.xendit.co/callback_virtual_accounts',
                 {
-                    external_id: externalId,
+                    external_id: request.id + "-" + currentTime,
                     bank_code: request.bank_code,
-                    name: "Teguhriyadi",
+                    name: request.name,
                     currency: "IDR",
                     is_closed: true,
                     is_single_use: true,
@@ -79,17 +81,29 @@ export class VirtualAccountService {
             const responseData = response.data
 
             const saveToTheDatabase = this.xenditRepository.create({
-                invoice_id: "TRX-" + responseData.external_id,
-                reference_id: "tnos-" + responseData.account_number,
-                currency: "IDR",
-                external_id: externalId,
-                amount: responseData.expected_amount,
+                xendit_id: responseData.id,
+                business_id: responseData.owner_id,
+                reference_id: responseData.external_id,
+                amount: request.amount,
                 status: responseData.status,
-                is_single_use: responseData.is_single_use,
-                is_closed: responseData.is_closed,
-                payment_method: "VIRTUAL ACCOUNT",
+                merchant_code: responseData.merchant_code,
                 bank_code: responseData.bank_code,
-                expires_at: responseData.expiration_date
+                description: "-",
+                customer: JSON.stringify({
+                    name: request.name,
+                    email: request.email,
+                    phone: request.phone
+                }),
+                items: request.items,
+                actions: "-",
+                country: responseData.country,
+                account_number: responseData.account_number,
+                is_closed: responseData.is_closed,
+                is_single_use: responseData.is_single_use,
+                payment_method: "VIRTUAL ACCOUNT",
+                payment_channel: responseData.bank_code,
+                expiration_date: responseData.expiration_date,
+                others: "-"
             })
 
             const paymentData = await this.xenditRepository.save(saveToTheDatabase)
@@ -97,7 +111,7 @@ export class VirtualAccountService {
             const paymentLog = this.paymentLogRepository.create({
                 transaction_id: paymentData.id,
                 amount: saveToTheDatabase.amount,
-                currency: saveToTheDatabase.currency,
+                currency: "IDR",
                 payment_method: saveToTheDatabase.payment_method,
                 bank_code: saveToTheDatabase.bank_code,
                 status: saveToTheDatabase.status,
@@ -121,19 +135,18 @@ export class VirtualAccountService {
 
             const payment = await this.xenditRepository.findOne({
                 where: {
-                    external_id: external_id
+                    reference_id: external_id
                 }
             })
 
             payment.status = "PAID"
-            payment.status_pembayaran = "SUCCESS"
 
             const updatePayment = await this.xenditRepository.save(payment)
 
             const paymentLog = this.paymentLogRepository.create({
                 transaction_id: updatePayment.id,
                 amount: updatePayment.amount,
-                currency: updatePayment.currency,
+                currency: "IDR",
                 payment_method: updatePayment.payment_method,
                 bank_code: updatePayment.bank_code,
                 status: updatePayment.status,

@@ -20,10 +20,9 @@ export class XenditController {
     @HttpCode(HttpStatus.OK)
     async callbackQr(@Body() xenditCallbackData: any): Promise<any> {
         try {
+            const status = xenditCallbackData.data.status;
 
-            const status = xenditCallbackData?.data?.status;
-
-            const qr_id = xenditCallbackData?.data?.qr_id;
+            const qr_id = xenditCallbackData.data.qr_id;
         
             const updatePayment = await this.xenditService.updatePayment(
                 qr_id,

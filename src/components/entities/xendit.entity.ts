@@ -1,7 +1,7 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { BeforeInsert, Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity({
-    name: "xendits"
+    name: "pembayaran"
 })
 
 export class Xendit {
@@ -9,17 +9,44 @@ export class Xendit {
     @PrimaryGeneratedColumn()
     id: number
 
-    @Column({length: 150})
-    invoice_id: string
+    @Column({length: 255, nullable: true})
+    xendit_id: string
+
+    @Column({length: 150, nullable: true})
+    business_id: string
 
     @Column({ length: 150, nullable: true })
     reference_id: string
 
-    @Column({length: 255})
-    external_id: string
-
     @Column()
     amount: number
+
+    @Column({length: 255})
+    status: string
+    
+    @Column({length: 150, nullable: true})
+    merchant_code: string
+
+    @Column({ length: 50, nullable: true })
+    bank_code: string
+
+    @Column({ length: 255 })
+    description: string
+
+    @Column({ length: 255 })
+    customer: string
+
+    @Column({ length: 255 })
+    items: string
+
+    @Column({type: "text"})
+    actions: string
+
+    @Column({ length: 50, nullable: true })
+    country: string
+
+    @Column({ length: 150, nullable: true })
+    account_number: string
 
     @Column({ nullable: true })
     is_closed: boolean
@@ -27,31 +54,22 @@ export class Xendit {
     @Column({ nullable: true })
     is_single_use: boolean
 
-    @Column({ length: 15 })
-    currency: string
-
     @Column({length: 40})
     payment_method: string
 
     @Column({ length: 50, nullable: true })
     payment_channel: string
 
-    @Column({ length: 50 })
-    bank_code: string
-
-    @Column({length: 255})
-    status: string
+    @Column({ length: 150, nullable: true })
+    expiration_date: string
 
     @Column({ length: 150, nullable: true })
-    status_pembayaran: string
+    others: string
 
-    @Column({ length: 150 })
-    expires_at: string
-
-    @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
-    created_at: Date
-
-    @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)" })
-    updated_at: Date
-
+    @BeforeInsert()
+    setDefaultActions() {
+        if (!this.actions) {
+            this.actions = "-";
+        }
+    }
 }

@@ -56,14 +56,16 @@ export class XenditService {
         const currentTime = new Date();
         const expiresAt = new Date(currentTime.getTime() + (60 * 60 * 1000));
 
+        const currentTimeNow = Date.now();
+
         try {
             const response = await axios.post(
                 'https://api.xendit.co/qr_codes',
                 {
-                    external_id: externalId,
                     reference_id: referenceId,
                     type: 'DYNAMIC',
                     currency: 'IDR',
+                    external_id: request.id + "-" + currentTimeNow,
                     amount: request.amount,
                     expires_at: expiresAt.toISOString()
                 },
@@ -79,15 +81,24 @@ export class XenditService {
             const responseData = response.data
 
             const paymentQris = this.xenditRepository.create({
-                invoice_id: "TNOS-INV-123",
-                reference_id: responseData.id,
-                external_id: externalId,
-                amount: responseData.amount,
+                xendit_id: responseData.id,
+                business_id: responseData.business_id,
+                reference_id: responseData.reference_id,
+                amount: request.amount,
                 status: responseData.status,
-                payment_method: "QRIS",
-                bank_code: responseData.channel_code,
-                expires_at: responseData.expires_at,
-                currency: "IDR"
+                description: "-",
+                customer: JSON.stringify({
+                    name: request.name,
+                    email: request.email,
+                    phone: request.phone
+                }),
+                items: JSON.stringify(request.items),
+                payment_method: "QR_CODE",
+                actions: JSON.stringify({
+                    qr_string: responseData.qr_string
+                }),
+                expiration_date: responseData.expires_at,
+                others: null
             })
 
             const responseDataQris = await this.xenditRepository.save(paymentQris)
@@ -95,7 +106,7 @@ export class XenditService {
             const paymentLog = this.paymentLogRepository.create({
                 transaction_id: responseDataQris.id,
                 amount: paymentQris.amount,
-                currency: paymentQris.currency,
+                currency: "IDR",
                 payment_method: paymentQris.payment_method,
                 bank_code: paymentQris.bank_code,
                 status: paymentQris.status,
@@ -120,7 +131,7 @@ export class XenditService {
 
             const payment = await this.xenditRepository.findOne({
                 where: {
-                    reference_id: qr_id
+                    xendit_id: qr_id
                 }
             })
 
@@ -131,7 +142,7 @@ export class XenditService {
             const paymentLog = this.paymentLogRepository.create({
                 transaction_id: updatePayment.id,
                 amount: updatePayment.amount,
-                currency: updatePayment.currency,
+                currency: "IDR",
                 payment_method: updatePayment.payment_method,
                 bank_code: updatePayment.bank_code,
                 status: updatePayment.status,

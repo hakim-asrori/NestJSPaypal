@@ -3,6 +3,7 @@ import { AppGateway } from "src/service_modules/app.gateway";
 import { PaypalService } from "./paypal.service";
 import { log } from "console";
 import { eventEmitterService } from "src/components/services/event-emitter.service";
+import { CreateVADto } from "src/components/dto/create-va.dto";
 
 @Controller("paypal")
 export class PaypalController {
@@ -13,8 +14,8 @@ export class PaypalController {
     ) { }
 
     @Post("create")
-    async qrXendit(): Promise<any> {
-        return await this.paypalService.createPaypal()
+    async paypalCreate(@Body() createPaypal: CreateVADto): Promise<any> {
+        return await this.paypalService.createPaypal(createPaypal)
     }
 
     @Post('callback')

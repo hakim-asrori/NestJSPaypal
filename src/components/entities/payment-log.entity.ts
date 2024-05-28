@@ -21,7 +21,7 @@ export class PaymentLog {
     @Column({length: 40})
     payment_method: String
 
-    @Column({length: 40})
+    @Column({length: 40, nullable: true})
     bank_code: String
 
     @Column({length: 255})
